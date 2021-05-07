@@ -6,8 +6,8 @@ The structure of .exe file can be considered as follows:
 1. DOS Header
 2. DOS Stub
 3. NT Header
-3.1 NT File Header
-3.2 NT Optional Header
+* NT File Header
+* NT Optional Header
 4. Sections header
 5. Program segments
 
