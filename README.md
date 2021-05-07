@@ -13,7 +13,7 @@ The structure of .exe file can be considered as follows:
 
 So let's figure out what are all these contraptions. Of course, let's deal with DOS thigs first.
 ## DOS Header
-DOS Header is first bytes in out .exe program. Its aim is to describe how the program should act if it is launched under the DOS OS. According to MS source codes, it is the following stuff:
+DOS Header is first bytes in our .exe program. Its aim is to describe how the program should act if it is launched under the DOS OS. According to MS source codes, it is the following stuff:
 ```C++
 struct IMAGE_DOS_HEADER {               // DOS .EXE header
     WORD   e_magic;                     // Magic number
