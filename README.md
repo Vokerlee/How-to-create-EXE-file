@@ -199,7 +199,7 @@ struct IMAGE_OPTIONAL_HEADER32 {
     IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
 }
 ```
-So there are a lot of fileds, hard work wate for us...
+So there are a lot of fields, hard work wate for us...
 ```C++
 // =================================================================================================================
 Magic = IMAGE_NT_OPTIONAL_HDR32_MAGIC   // Similarly can be IMAGE_NT_OPTIONAL_HDR64_MAGIC
