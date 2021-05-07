@@ -99,7 +99,7 @@ int 0x21          ; 0x21 DOS interrupt
 It is the most important header, because it is directly connected with the work of the program. The components of this header depends on the system capacity. It can be x64 or x86. There are few differences, so let's consider more general case — x86.
 
 ```C++
-struct _IMAGE_NT_HEADERS {
+struct IMAGE_NT_HEADERS {
     DWORD Signature;
     IMAGE_FILE_HEADER FileHeader;
     IMAGE_OPTIONAL_HEADER32 OptionalHeader;
@@ -107,4 +107,135 @@ struct _IMAGE_NT_HEADERS {
 ```
 Here we can see `Signature`, which role is the same as `e_magic` in DOS Header. It should be "PE" (program executable) or 'EP'. `FileHeader` is common for both x64 and x86. But x64 architecture has `IMAGE_OPTIONAL_HEADER64 OptionalHeader`. Let's look what these headers are.
 
+## NT File Header
+This file has the following structure:
+```C++
+struct IMAGE_FILE_HEADER {
+    WORD    Machine;
+    WORD    NumberOfSections;
+    DWORD   TimeDateStamp;
+    DWORD   PointerToSymbolTable;
+    DWORD   NumberOfSymbols;
+    WORD    SizeOfOptionalHeader;
+    WORD    Characteristics;
+}
+```
+Here the description of each field:
+```C++
+// =================================================================================================================
+Machine = IMAGE_FILE_MACHINE_I386    // The minimal level of machine, which can execute the program. 
+                                     // IMAGE_FILE_MACHINE_I386 = 0x014c
+                                     // There is no sence to make big demands for execution. (I386 is enough)
+                                     // Types of machines you can find here:
+                                     // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#machine-types
+// =================================================================================================================
+NumberOfSections     = 0x0003        // The number of sections in the program. For example .data section,
+                                     // .text and .idata section. Also there are .rdata, .bss and so on.
+                                     // This indicates the size of the section table, which immediately 
+                                     // follows the headers.
+// =================================================================================================================  
+TimeDateStamp        = 0x0003        // The low 32 bits of the number of seconds since 00:00 January 1,
+                                     // 1970 (a C run-time time_t value), which indicates when the file was created.
+// =================================================================================================================
+SizeOfOptionalHeader = sizeof(IMAGE_OPTIONAL_HEADER32)
+                                     // Also can be sizeof(IMAGE_OPTIONAL_HEADER64)
+                                     // Remember about alignment!
+// =================================================================================================================  
+Characteristics      = IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_32BIT_MACHINE
+                                     // The flags that indicate the attributes of the file.
+                                     // IMAGE_FILE_EXECUTABLE_IMAGE = 0x0002
+                                     // IMAGE_FILE_32BIT_MACHINE    = 0x0100
+                                     // There is no sence to add something more, but if you are interested in 
+                                     // you can see it: 
+                                     // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#characteristics
+// =================================================================================================================  
+```
+
+Okey, continue.
+
 ## NT Optional Header
+
+Despite the fact that this header is optional, it is neseccary for .exe file.
+The structure of this header:
+
+```C++
+struct IMAGE_OPTIONAL_HEADER32 {
+
+    // Standard fields.
+
+    WORD    Magic;
+    BYTE    MajorLinkerVersion;
+    BYTE    MinorLinkerVersion;
+    DWORD   SizeOfCode;
+    DWORD   SizeOfInitializedData;
+    DWORD   SizeOfUninitializedData;
+    DWORD   AddressOfEntryPoint;
+    DWORD   BaseOfCode;
+    DWORD   BaseOfData;
+
+    // NT additional fields.
+
+    DWORD   ImageBase;
+    DWORD   SectionAlignment;
+    DWORD   FileAlignment;
+    WORD    MajorOperatingSystemVersion;
+    WORD    MinorOperatingSystemVersion;
+    WORD    MajorImageVersion;
+    WORD    MinorImageVersion;
+    WORD    MajorSubsystemVersion;
+    WORD    MinorSubsystemVersion;
+    DWORD   Win32VersionValue;
+    DWORD   SizeOfImage;
+    DWORD   SizeOfHeaders;
+    DWORD   CheckSum;
+    WORD    Subsystem;
+    WORD    DllCharacteristics;
+    DWORD   SizeOfStackReserve;
+    DWORD   SizeOfStackCommit;
+    DWORD   SizeOfHeapReserve;
+    DWORD   SizeOfHeapCommit;
+    DWORD   LoaderFlags;
+    DWORD   NumberOfRvaAndSizes;
+    IMAGE_DATA_DIRECTORY DataDirectory[IMAGE_NUMBEROF_DIRECTORY_ENTRIES];
+}
+```
+So there are a lot of fileds, hard work wate for us...
+```C++
+// =================================================================================================================
+Magic = IMAGE_NT_OPTIONAL_HDR32_MAGIC   // Similarly can be IMAGE_NT_OPTIONAL_HDR64_MAGIC
+                                        // IMAGE_NT_OPTIONAL_HDR32_MAGIC = 0x10b (the most common value).
+// =================================================================================================================
+ImageBase = 0x00400000                  // It is the address in virtual memory, where the image will be loaded
+                                        // 0x00400000 is the most common value (and is default).
+                                        // Must be a multiple of 64K!
+// =================================================================================================================  
+AddressOfEntryPoint = 0x1000            // The address of the entry point relative to the image base when 
+                                        // the executable file is loaded into memory. For program images, 
+                                        // this is the starting address.
+                                        // 0x1000 is the most common value.
+// =================================================================================================================
+BaseOfCode = 0x1000                     // The address of code section relative to the image base.
+                                        // In our guide it is the first section, so it equals to AddressOfEntryPoint.
+// ================================================================================================================= 
+BaseOfData = 0x1000 + DATA_START        // The address of code section relative to the image base.
+                                        // DATA_START is the address of code section relative to the AddressOfEntryPoint
+                                        // This value you can count only in the of all headers, so keep it in mind.
+// =================================================================================================================
+SectionAlignment = 0x1000               // The alignment (in bytes) of sections when they are loaded into memory. 
+                                        // It must be greater than or equal to FileAlignment. 
+                                        // The default is the page size for the architecture.
+// ================================================================================================================= 
+SizeOfImage                             // The size (in bytes) of the image, including all headers, as the image is 
+                                        // loaded in memory. It must be a multiple of SectionAlignment.
+                                        // So headers take 0x1000 size, and if all k sections has the same size in
+                                        // virtual memory N, the value of SizeOfImage is 0x1000 + k*N
+// ================================================================================================================= 
+FileAlignment = 0x200                   // The alignment factor (in bytes) that is used to align the raw data 
+                                        // of sections in the image file. The value should be a power of 2 between 
+                                        // 512 and 64 K, inclusive. The default is 512. 
+                                        // In short, it is the alignment of sections in .exe file.
+// ================================================================================================================= 
+SizeOfHeaders = 0x400                   // The combined size of an MS-DOS stub, PE header, and section headers 
+                                        // rounded up to a multiple of FileAlignment.
+// ================================================================================================================= 
+```
