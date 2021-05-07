@@ -39,7 +39,8 @@ struct IMAGE_DOS_HEADER {               // DOS .EXE header
 ```
 Not all these fields are necessary (they can be just filled with zeros). So let's fill the most interesting:
 ```C++
-e_magic = 'ZM'          /* Must be always filled with this word (Mark Zbikowski — a former Microsoft Architect). It is an identifier that our program is executable. */
+e_magic = 'ZM'          // Must be always filled with this word (Mark Zbikowski — a former Microsoft Architect).
+// It is an identifier that our program is executable.
 e_cp    = 0x0003        /* It's the size of the "entire" MZ format executable (3 pages). This field is intended for loading programs under DOS. */
 e_cblp  = 0x0090        /* This value is bytes on last page of file. It means that in DOS anything past the last byte in the last page of executable file is ignored. When MS-DOS loads an MZ format executable it copies everything in the file after the headers up until this limit. So the fact most PE-files have this field set to a value bigger than the MS-DOS stub (about it read on) just means that the PE-file headers' and part of PE-file section data will be loaded into memory when the executable is run under MS-DOS. */
 e_cparhdr  = 0x0004      /* The amount of bytes of DOS Header in paragraphes — 64 bytes or 4 paragraphes. (Remember about alignment) */
