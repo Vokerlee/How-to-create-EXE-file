@@ -237,5 +237,24 @@ FileAlignment = 0x200                   // The alignment factor (in bytes) that 
 // ================================================================================================================= 
 SizeOfHeaders = 0x400                   // The combined size of an MS-DOS stub, PE header, and section headers 
                                         // rounded up to a multiple of FileAlignment.
-// ================================================================================================================= 
+// =================================================================================================================
+Subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI // The subsystem that is required to run this image.
+                                        // IMAGE_SUBSYSTEM_WINDOWS_CUI = 3 is a console application.
+                                        // IMAGE_SUBSYSTEM_WINDOWS_GUI = 2 is a graphic application.
+// =================================================================================================================
+NumberOfRvaAndSizes = IMAGE_NUMBEROF_DIRECTORY_ENTRIES
+                                        // The number of data-directory entries in the remainder of the optional header. 
+                                        // Each describes a location and size.
+                                        // IMAGE_NUMBEROF_DIRECTORY_ENTRIES = 16 (a default number).
+                                        // Read more there:
+                                        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-data-directories-image-only
+// =================================================================================================================
+DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = IMPORT_START;
+                                        // IMPORT_START is the address of import data section relative to the AddressOfEntryPoint.
+                                        // IMAGE_DIRECTORY_ENTRY_IMPORT = 2.
+                                        // It fills the virtual address of import data section. Of course, you can 
+                                        // describe all fileds. Read more there:
+                                        // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#optional-header-data-directories-image-only
+// =================================================================================================================
 ```
+OK, we are too close to finish the .exe file description.
