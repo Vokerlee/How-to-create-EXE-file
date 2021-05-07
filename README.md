@@ -3,7 +3,7 @@ This repo is a guide how to create an executable file in Windows OS. It helps no
 
 ## Introduction
 The structure of .exe file can be considered as follows:
-1. DOS Header
+1. [DOS Header](## DOS Header)
 2. DOS Stub
 3. NT Header
     * NT File Header
