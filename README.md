@@ -5,11 +5,11 @@ This repo is a guide how to create an executable file in Windows OS. It helps no
 The structure of .exe file can be considered as follows:
 1. [DOS Header](#dos-header)
 2. [DOS Stub](#dos-stub)
-3. NT Header
-    * NT File Header
-    * NT Optional Header
-4. Sections header
-5. Program segments
+3. [NT Header](#nt-header)
+    * [NT File Header](#nt-file-header)
+    * [NT Optional Header](#nt-optional-header)
+4. [Sections header](#section-header)
+5. [Program segments](program-segments)
 
 So let's figure out what are all these contraptions. Of course, let's deal with DOS thigs first.
 ## DOS Header
@@ -40,7 +40,7 @@ struct IMAGE_DOS_HEADER {               // DOS .EXE header
 Not all these fields are necessary (they can be just filled with zeros). So let's fill the most interesting:
 ```C++
 // =================================================================================================================
-e_magic    = 'ZM'       // Must be always filled with this word (Mark Zbikowski — a former Microsoft Architect).
+e_magic    = 'ZM'       // (in other way "MZ") Must be always filled with this word (Mark Zbikowski — a former Microsoft Architect).
                         // It is an identifier that our program is executable.
 // =================================================================================================================
 e_cp       = 0x0003     // It's the size of the "entire" MZ format executable (3 pages). This field is intended 
@@ -79,6 +79,7 @@ There are two important aims of this header. First of all it is `e_lfanew` — t
 
 ## DOS Stub
 If you are attentive you already know, that this part is to take 112 bytes. This part of .exe file is to describe the program behaviour under DOS OS. In short, it prints message "This program cannot be run in DOS mode." and exits from the program. So the assemler code is as follows:
+
 ```asm
 push cs           ; Keep in mind Code Segment(CS) (where we are in memory)
 pop ds            ; Data Segment(DS) = Code Segment(CS)
@@ -92,3 +93,17 @@ int 0x21          ; 0x21 DOS interrupt
 
 "This program cannot be run in DOS mode.\x0D\x0A$" ; The output string
 ```
+
+## NT Header
+It is the most important header, because it is directly connected with the work of the program. The components of this header depends on the system capacity. It can be x64 or x86. There are few differences, so let's consider more general case — x86.
+
+```C++
+struct _IMAGE_NT_HEADERS {
+    DWORD Signature;
+    IMAGE_FILE_HEADER FileHeader;
+    IMAGE_OPTIONAL_HEADER32 OptionalHeader;
+};
+```
+Here we can see `Signature`, shich role is the same as `e_magic` in DOS Header. It should be "PE" (program executable) or 'EP'. `FileHeader` is common for both x64 and x86. But x64 architecture has `IMAGE_OPTIONAL_HEADER64 OptionalHeader`. Let's look what these headers are.
+
+## NT Optional Header
