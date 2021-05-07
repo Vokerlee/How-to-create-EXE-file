@@ -80,12 +80,12 @@ There are two important aims of this header. First of all it is `e_lfanew` — t
 ## DOS Stub
 If you are attentive you already know, that this part is to take 112 bytes. This part of .exe file is to describe the program behaviour under DOS OS. In short, it prints message "This program cannot be run in DOS mode." and exits from the program. So the assemler code is as follows:
 ```asm
-push cs			; Keep in mind Code Segment(CS) (where we are in memory)
-pop ds			; Data Segment(DS) = Code Segment(CS)
-mov dx, 0x0E	; The address of the string DS+DX, which will be printed until '$' (the end of the string) 
-mov ah, 0x09	; The number of instruction (print regime)
-int 0x21		; 0x21 DOS interrupt
-mov ax, 0x4C01	; The number of instruction 0x4C (exit from the program) 
-int 0x21		; 0x21 DOS interrupt
+push cs			   ; Keep in mind Code Segment(CS) (where we are in memory)
+pop ds			   ; Data Segment(DS) = Code Segment(CS)
+mov dx, 0x0E	   ; The address of the string DS+DX, which will be printed until '$' (the end of the string) 
+mov ah, 0x09	   ; The number of instruction (print regime)
+int 0x21		      ; 0x21 DOS interrupt
+mov ax, 0x4C01	   ; The number of instruction 0x4C (exit from the program) 
+int 0x21		      ; 0x21 DOS interrupt
 "This program cannot be run in DOS mode.\x0D\x0A$" ; The output string
 ```
