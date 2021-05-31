@@ -11,7 +11,7 @@ The structure of .exe file can be considered as follows:
 4. [Sections header](#section-header)
 5. [Program segments](program-segments)
 
-So let's figure out what are all these contraptions. Of course, let's deal with DOS thigs first.
+So let's figure out what are all these contraptions. Of course, let's deal with DOS things first.
 ## DOS Header
 DOS Header is first bytes in our .exe program. Its aim is to describe how the program should act if it is launched under the DOS OS. According to MS source codes, it is the following stuff:
 ```C++
