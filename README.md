@@ -1,5 +1,5 @@
 # Create-EXE-in-60-minutes
-This repo is a guide how to create an executable file in Windows OS. It helps not only to create, but also to understand in more detail how .exe files are arranged.
+This repository is a guide how to create an executable file in Windows OS. It helps not only to create, but also to understand in more detail how .exe files are arranged. For each step in the guide, a corresponding byte-code is attached for convenience.
 
 ## Introduction
 The structure of .exe file can be considered as follows:
@@ -12,8 +12,10 @@ The structure of .exe file can be considered as follows:
 5. [Program segments](program-segments)
 
 So let's figure out what are all these contraptions. Of course, let's deal with DOS things first.
+
 ## DOS Header
-DOS Header is first bytes in our .exe program. Its aim is to describe how the program should act if it is launched under the DOS OS. According to MS source codes, it is the following stuff:
+DOS Header is first bytes in our .exe program. Its aim is to describe how the program should act if it is launched on DOS OS. According to MS source codes, it consists of the following stuff:
+
 ```C++
 struct IMAGE_DOS_HEADER {               // DOS .EXE header
     WORD   e_magic;                     // Magic number
@@ -37,7 +39,8 @@ struct IMAGE_DOS_HEADER {               // DOS .EXE header
     LONG   e_lfanew;                    // File address of new exe header
   };
 ```
-Not all these fields are necessary (they can be just filled with zeros). So let's fill the most interesting:
+Not all these fields are necessary (they can be just filled with zeros). So let's fill the most interesting ones:
+
 ```C++
 // =================================================================================================================
 e_magic    = 'ZM'       // (in other way "MZ") Must be always filled with this word (Mark Zbikowski — 
@@ -76,12 +79,22 @@ e_lfarlc   = 0x0040     // Specifies the file address of the relocation table, o
 e_lfanew   = 0x00B0     // This field is the address of the beginning of NT Header. So it is the size 
                         // of DOS Header and DOS Stub in bytes (64 + 112 = 176 = 0x00B0).
 ```
-There are two important aims of this header. First of all it is `e_lfanew` — the address of "normal" header that is important for the program, and the second is the description how the program under DOS will behave, using the code from DOS Stub.
+There are two important aims of this header. First of all it is `e_lfanew` — the address of header that is directly related to the work of the program in Windows OS (NT Header — see further), and the second is the description how the program will behave, if is is launched on DOS OS, using the code from DOS Stub.
+
+- [DOS Header byte-code] <details><summary></summary>
+    ```
+	4D 5A 90 00 03 00 00 00 04 00 10 00 FF FF 00 00
+    B8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 B0 00 00 00
+    ```
+
 
 ## DOS Stub
-If you are attentive you already know, that this part is to take 112 bytes. This part of .exe file is to describe the program behaviour under DOS OS. In short, it prints message "This program cannot be run in DOS mode." and exits from the program. So the assemler code is as follows:
+If you are attentive you already know, that this part is to take 112 bytes. This part of .exe file is to describe the program behaviour on DOS OS. In short, it prints the message "This program cannot be run in DOS mode." and exits from the program. So the assembler code is as follows:
 
 ```asm
+.code
 push cs           ; Keep in mind Code Segment(CS) (where we are in memory)
 pop ds            ; Data Segment(DS) = Code Segment(CS)
 
@@ -92,8 +105,20 @@ int 0x21          ; 0x21 DOS interrupt
 mov ax, 0x4C01    ; The number of instruction 0x4C (exit from the program) 
 int 0x21          ; 0x21 DOS interrupt
 
-"This program cannot be run in DOS mode.\x0D\x0A$" ; The output string
+.data
+load db "This program cannot be run in DOS mode.\x0D\x0A$" ; The output string
 ```
+
+- [DOS Stub byte-code] <details><summary></summary>
+    ```
+	0E 1F BA 0E 00 B4 09 CD 21 B8 01 4C CD 21 54 68
+    69 73 20 70 72 6F 67 72 61 6D 20 63 61 6E 6E 6F
+    74 20 62 65 20 72 75 6E 20 69 6E 20 44 4F 53 20
+    6D 6F 64 65 2E 0D 0D 0A 24 00 00 00 00 00 00 00
+    5D 5C 6D C1 19 3D 03 92 19 3D 03 92 19 3D 03 92
+    97 22 10 92 1E 3D 03 92 E5 1D 11 92 18 3D 03 92
+    52 69 63 68 19 3D 03 92 00 00 00 00 00 00 00 00
+    ```
 
 ## NT Header
 It is the most important header, because it is directly connected with the work of the program. The components of this header depends on the system capacity. It can be x64 or x86. There are few differences, so let's consider more general case — x86.
@@ -107,7 +132,7 @@ struct IMAGE_NT_HEADERS {
 ```
 Here we can see `Signature`, which role is the same as `e_magic` in DOS Header. It should be "PE" (program executable) or 'EP'. `FileHeader` is common for both x64 and x86. But x64 architecture has `IMAGE_OPTIONAL_HEADER64 OptionalHeader`. Let's look what these headers are.
 
-## NT File Header
+### NT File Header
 This file has the following structure:
 ```C++
 struct IMAGE_FILE_HEADER {
@@ -120,7 +145,7 @@ struct IMAGE_FILE_HEADER {
     WORD    Characteristics;
 }
 ```
-Here the description of each field:
+Here is the description of each field:
 ```C++
 // =================================================================================================================
 Machine = IMAGE_FILE_MACHINE_I386    // The minimal level of machine, which can execute the program. 
@@ -153,7 +178,7 @@ Characteristics      = IMAGE_FILE_EXECUTABLE_IMAGE | IMAGE_FILE_32BIT_MACHINE
 
 Okey, continue.
 
-## NT Optional Header
+### NT Optional Header
 
 Despite the fact that this header is optional, it is neseccary for .exe file.
 The structure of this header:
@@ -217,7 +242,7 @@ AddressOfEntryPoint = 0x1000            // The address of the entry point relati
 BaseOfCode = 0x1000                     // The address of code section relative to the image base.
                                         // In our guide it is the first section, so it equals to AddressOfEntryPoint.
 // ================================================================================================================= 
-BaseOfData = 0x1000 + DATA_START        // The address of code section relative to the image base.
+BaseOfData = DATA_START                 // The address of code section relative to the image base.
                                         // DATA_START is the address of code section relative to the AddressOfEntryPoint
                                         // This value you can count only in the of all headers, so keep it in mind.
 // =================================================================================================================
@@ -276,5 +301,27 @@ If you are too lazy, here is the defines for all other elements in `DataDirector
 #define IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT     11   // Bound Import Directory in headers
 #define IMAGE_DIRECTORY_ENTRY_IAT              12   // Import Address Table
 #define IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT     13   // Delay Load Import Descriptors
-#define IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR   14   // COM Runtime descript
+#define IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR   14   // COM Runtime descriptor
 ```
+
+For example we have 3 program sections, located in the next sequence: code, import data and data. Let's set `IMPORT_SIZE = CODE_SIZE = DATA_SIZE = 0x5000`, then `IMPORT_START = 0x1000 + CODE_SIZE = 0x6000`, `DATA_START = 0x1000 + CODE_SIZE + IMPORT_SIZE = 0xB000`. So we have `SizeOfImage = 0x1000 + 3 * CODE_SIZE = 0xF000`.
+
+- [NT Header byte-code] <details><summary></summary>
+    ```
+	50 45 00 00 4C 01 03 00 84 75 BA 60 00 00 00 00
+    00 00 00 00 E0 00 02 01 0B 01 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 10 00 00 00 10 00 00
+    00 B0 00 00 00 00 40 00 00 10 00 00 00 02 00 00
+    00 00 00 00 00 00 00 00 04 00 00 00 00 00 00 00
+    00 00 01 00 00 04 00 00 00 00 00 00 03 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 10 00 00 00 00 00 00 00 00 00 00 00
+    00 60 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00
+    ```
