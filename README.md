@@ -9,7 +9,7 @@ The structure of .exe file can be considered as follows:
     * [NT File Header](#nt-file-header)
     * [NT Optional Header](#nt-optional-header)
 4. [Sections header](#section-header)
-5. [Program segments](program-segments)
+5. [Program segments](#program-segments)
 
 So let's figure out what are all these contraptions. Of course, let's deal with DOS things first.
 
@@ -154,8 +154,8 @@ Machine = IMAGE_FILE_MACHINE_I386    // The minimal level of machine, which can 
                                      // Types of machines you can find here:
                                      // https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#machine-types
 // =================================================================================================================
-NumberOfSections     = 0x0003        // The number of sections in the program. For example .data section,
-                                     // .text and .idata section. Also there are .rdata, .bss and so on.
+NumberOfSections     = 0x0003        // The number of sections in the program. For example .text section,
+                                     // .idata and .data section. Also there are .rdata, .bss and so on.
                                      // This indicates the size of the section table, which immediately 
                                      // follows the headers.
 // =================================================================================================================  
@@ -235,16 +235,23 @@ ImageBase = 0x00400000                  // It is the address in virtual memory, 
                                         // Must be a multiple of 64K!
 // =================================================================================================================  
 AddressOfEntryPoint = 0x1000            // The address of the entry point relative to the image base when 
-                                        // the executable file is loaded into memory. For program images, 
-                                        // this is the starting address.
+                                        // the executable file is loaded into memory after being launched. 
+                                        // For program images, this is the starting address.
                                         // 0x1000 is the most common value.
 // =================================================================================================================
 BaseOfCode = 0x1000                     // The address of code section relative to the image base.
-                                        // In our guide it is the first section, so it equals to AddressOfEntryPoint.
+                                        // In our guide it is the first section, so it equals to AddressOfEntryPoint. 
+                                        // Of course, AddressOfEntryPoint can differ from BaseOfCode, for example 
+                                        // AddressOfEntryPoint = 0x1034, but BaseOfCode should be 0x1000 in any way,
+                                        // because it 0x1000 is the most common value.
 // ================================================================================================================= 
 BaseOfData = DATA_START                 // The address of code section relative to the image base.
                                         // DATA_START is the address of code section relative to the AddressOfEntryPoint
-                                        // This value you can count only in the of all headers, so keep it in mind.
+                                        // This value you can count only after your decide the structure 
+                                        // of all sections in your program. For example, if the size of code section
+                                        // is 0x5000 and after it import data section follows and has the same 0x5000 size,
+                                        // and data section follows immediately after import data section, 
+                                        // DATA_START = BaseOfData = BaseOfCode + 0x5000 * 2 = 0xA000
 // =================================================================================================================
 SectionAlignment = 0x1000               // The alignment (in bytes) of sections when they are loaded into memory. 
                                         // It must be greater than or equal to FileAlignment. 
@@ -276,6 +283,8 @@ NumberOfRvaAndSizes = IMAGE_NUMBEROF_DIRECTORY_ENTRIES
 // =================================================================================================================
 DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = IMPORT_START;
                                         // IMPORT_START is the address of import data section relative to the AddressOfEntryPoint.
+                                        // By analogy with DATA_START, 
+                                        // IMPORT_START = BaseOfCode + 0x5000 = 0x6000
                                         // IMAGE_DIRECTORY_ENTRY_IMPORT = 2.
                                         // It fills the virtual address of import data section. Of course, you can 
                                         // describe all fileds. Read more there:
@@ -304,9 +313,9 @@ If you are too lazy, here is the defines for all other elements in `DataDirector
 #define IMAGE_DIRECTORY_ENTRY_COM_DESCRIPTOR   14   // COM Runtime descriptor
 ```
 
-For example we have 3 program sections, located in the next sequence: code, import data and data. Let's set `IMPORT_SIZE = CODE_SIZE = DATA_SIZE = 0x5000`, then `IMPORT_START = 0x1000 + CODE_SIZE = 0x6000`, `DATA_START = 0x1000 + CODE_SIZE + IMPORT_SIZE = 0xB000`. So we have `SizeOfImage = 0x1000 + 3 * CODE_SIZE = 0xF000`.
+Taking into consideration all the examples, we have 3 program sections, located in the next sequence: code, import data and data. Let's set `IMPORT_SIZE = CODE_SIZE = DATA_SIZE = 0x5000`, then `IMPORT_START = 0x1000 + CODE_SIZE = 0x6000`, `DATA_START = 0x1000 + CODE_SIZE + IMPORT_SIZE = 0xA000`. So we have `SizeOfImage = 0x1000 + 3 * CODE_SIZE = 0xF000`.
 
-- [NT Header byte-code] <details><summary></summary>
+- [NT Header byte-code example] <details><summary></summary>
     ```
 	50 45 00 00 4C 01 03 00 84 75 BA 60 00 00 00 00
     00 00 00 00 E0 00 02 01 0B 01 00 00 00 00 00 00
@@ -324,4 +333,80 @@ For example we have 3 program sections, located in the next sequence: code, impo
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
     00 00 00 00 00 00 00 00
+    ```
+    
+## Section Headers
+
+After all headers we should describe not less important sections headers. All such headers have the same pattern, implemented through the following structure:
+
+```C++
+#define IMAGE_SIZEOF_SHORT_NAME 8
+
+struct _IMAGE_SECTION_HEADER {
+    BYTE    Name[IMAGE_SIZEOF_SHORT_NAME];
+    union {
+            DWORD   PhysicalAddress;
+            DWORD   VirtualSize;
+    } Misc;
+    DWORD   VirtualAddress;
+    DWORD   SizeOfRawData;
+    DWORD   PointerToRawData;
+    DWORD   PointerToRelocations;
+    DWORD   PointerToLinenumbers;
+    WORD    NumberOfRelocations;
+    WORD    NumberOfLinenumbers;
+    DWORD   Characteristics;
+}
+```
+
+If we continue the demonstrated example in the last chapter, we have code, import data and data sections. The main fields can be described in the following way:
+
+```C++
+// =================================================================================================================
+Name = ".text" / ".idata" / ...         // It is the name of section. There are ".data", ".rdata" and other names.
+// =================================================================================================================
+Misc.VirtualSize = SECTION_SIZE         // The size of described section, when it is loaded in memory after the program is launched.
+                                        // If we follow our example, SECTION_SIZE = IMPORT_SIZE = CODE_SIZE = DATA_SIZE = 0x5000
+// =================================================================================================================  
+VirtualAddress = VRT_ADDR               // Taking into account all other fields, you are to count this field for all sections.
+                                        // If we follow our example, for text section VRT_ADDR = AddressOfEntryPoint,
+                                        // for import data and data sections respectively VRT_ADDR equals to IMPORT_START and DATA_START
+// =================================================================================================================
+SizeOfRawData                           // The size of the initialized data on disk, in bytes. This value must be
+                                        // a multiple of the FileAlignment member of the IMAGE_OPTIONAL_HEADER structure. 
+                                        // If this value is less than the VirtualSize member, the remainder of 
+                                        // the section is filled with zeroes.
+                                        // If the section contains only uninitialized data, the member is zero.
+                                        // For example, SizeOfRawData = 0x1000.
+// ================================================================================================================= 
+PointerToRawData                        // A file pointer to the first page within the .exe file. This value must 
+                                        // be a multiple of the FileAlignment member of the IMAGE_OPTIONAL_HEADER structure. 
+                                        // If a section contains only uninitialized data, set this member is zero.
+                                        // For example, for our sections PointerToRawData = 0x400 / 0x1400 / 0x2400 respectively.
+// =================================================================================================================
+Characteristics                         // The characteristics of the section. 
+                                        // For example:
+                                        // 1) Code section: 
+                                        // Characteristics = IMAGE_SCN_CNT_CODE | IMAGE_SCN_MEM_EXECUTE | IMAGE_SCN_MEM_READ
+                                        // 2) Import data section: 
+                                        // Characteristics = IMAGE_SCN_CNT_INITIALIZED_DATA | IMAGE_SCN_MEM_READ
+                                        // 3) Code section: 
+                                        // Characteristics = IMAGE_SCN_MEM_READ | IMAGE_SCN_MEM_WRITE | IMAGE_SCN_CNT_INITIALIZED_DATA
+                                        // What these values mean, you can look by the link below (official documentation).
+// =================================================================================================================
+```
+
+If you want to see more about section headers, check [official documentation](https://docs.microsoft.com/ru-ru/windows/win32/api/winnt/ns-winnt-image_section_header?redirectedfrom=MSDN).
+
+And for considered examples:
+- [Section Headers byte-code] <details><summary></summary>
+    ```
+                            2E 74 65 78 74 00 00 00
+    00 50 00 00 00 10 00 00 00 10 00 00 00 04 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 20 00 00 60
+    2E 69 64 61 74 61 00 00 00 50 00 00 00 60 00 00
+    00 10 00 00 00 14 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 40 00 00 40 2E 64 61 74 61 00 00 00
+    00 50 00 00 00 B0 00 00 00 10 00 00 00 24 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 40 00 00 C0
     ```
