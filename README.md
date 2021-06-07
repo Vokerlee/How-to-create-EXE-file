@@ -1,4 +1,4 @@
-# Create-EXE-in-60-minutes
+# How to create EXE file
 This repository is a guide how to create an executable file in Windows OS. It helps not only to create, but also to understand in more detail how .exe files are arranged. For each step in the guide, a corresponding byte-code is attached for convenience.
 
 For every moment in guide byte code is attached, so I recommend you to download HxD to copy all byres conveniently.
