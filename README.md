@@ -1,6 +1,10 @@
 # Create-EXE-in-60-minutes
 This repository is a guide how to create an executable file in Windows OS. It helps not only to create, but also to understand in more detail how .exe files are arranged. For each step in the guide, a corresponding byte-code is attached for convenience.
 
+For every moment in guide byte code is attached, so I recommend you to download HxD to copy all byres conveniently.
+
+I recommend you to get acquainted with the following russian-language articles: [Создаём EXE](https://m.habr.com/ru/post/515058/), [PE (Portable Executable): На странных берегах](https://habr.com/ru/post/266831/).
+
 ## Introduction
 The structure of .exe file can be considered as follows:
 1. [DOS Header](#dos-header)
@@ -8,8 +12,10 @@ The structure of .exe file can be considered as follows:
 3. [NT Header](#nt-header)
     * [NT File Header](#nt-file-header)
     * [NT Optional Header](#nt-optional-header)
-4. [Sections header](#section-header)
-5. [Program segments](#program-segments)
+4. [Section headers](#section-header)
+5. [Text (code) section](#text-code-section)
+6. [Data section](#data-section)
+7. [Results](#results)
 
 So let's figure out what are all these contraptions. Of course, let's deal with DOS things first.
 
@@ -121,6 +127,7 @@ load db "This program cannot be run in DOS mode.\x0D\x0A$" ; The output string
     ```
 
 ## NT Header
+
 It is the most important header, because it is directly connected with the work of the program. The components of this header depends on the system capacity. It can be x64 or x86. There are few differences, so let's consider more general case — x86.
 
 ```C++
@@ -269,6 +276,9 @@ FileAlignment = 0x200                   // The alignment factor (in bytes) that 
 // ================================================================================================================= 
 SizeOfHeaders = 0x400                   // The combined size of an MS-DOS stub, PE header, and section headers 
                                         // rounded up to a multiple of FileAlignment.
+                                        // 0x400 = 1024, becuase the pure size of all headers is 544 > 512, so
+                                        // it is neseccary to fill all other 1024 - 544 = 480 bytes with zeros 
+                                        // because of alignment.
 // =================================================================================================================
 Subsystem = IMAGE_SUBSYSTEM_WINDOWS_CUI // The subsystem that is required to run this image.
                                         // IMAGE_SUBSYSTEM_WINDOWS_CUI = 3 is a console application.
@@ -365,24 +375,21 @@ If we continue the demonstrated example in the last chapter, we have code, impor
 // =================================================================================================================
 Name = ".text" / ".idata" / ...         // It is the name of section. There are ".data", ".rdata" and other names.
 // =================================================================================================================
-Misc.VirtualSize = SECTION_SIZE         // The size of described section, when it is loaded in memory after the program is launched.
+Misc.VirtualSize = SECTION_SIZE         // The size of described section, when it is loaded into memory after the program is launched.
                                         // If we follow our example, SECTION_SIZE = IMPORT_SIZE = CODE_SIZE = DATA_SIZE = 0x5000
 // =================================================================================================================  
 VirtualAddress = VRT_ADDR               // Taking into account all other fields, you are to count this field for all sections.
                                         // If we follow our example, for text section VRT_ADDR = AddressOfEntryPoint,
                                         // for import data and data sections respectively VRT_ADDR equals to IMPORT_START and DATA_START
 // =================================================================================================================
-SizeOfRawData                           // The size of the initialized data on disk, in bytes. This value must be
-                                        // a multiple of the FileAlignment member of the IMAGE_OPTIONAL_HEADER structure. 
-                                        // If this value is less than the VirtualSize member, the remainder of 
-                                        // the section is filled with zeroes.
-                                        // If the section contains only uninitialized data, the member is zero.
+SizeOfRawData                           // The size of section in our .exe file (not when the program is loaded into memory)
                                         // For example, SizeOfRawData = 0x1000.
 // ================================================================================================================= 
-PointerToRawData                        // A file pointer to the first page within the .exe file. This value must 
-                                        // be a multiple of the FileAlignment member of the IMAGE_OPTIONAL_HEADER structure. 
-                                        // If a section contains only uninitialized data, set this member is zero.
-                                        // For example, for our sections PointerToRawData = 0x400 / 0x1400 / 0x2400 respectively.
+PointerToRawData                        // The pointer to the data of section in .exe file.
+                                        // For example, we for text section PointerToRawData = SizeOfHeaders = 0x400, 
+                                        // because it is described right after all headers.
+                                        // For import data section PointerToRawData = SizeOfHeaders + SizeOfRawData = 0x1400.
+                                        // So for data section PointerToRawData = 0x2400.
 // =================================================================================================================
 Characteristics                         // The characteristics of the section. 
                                         // For example:
@@ -410,3 +417,230 @@ And for considered examples:
     00 50 00 00 00 B0 00 00 00 10 00 00 00 24 00 00
     00 00 00 00 00 00 00 00 00 00 00 00 40 00 00 C0
     ```
+
+OK! All headers are ready! Everything is left is to fill with zeros all bytes to 0x400 = 1024!
+
+If you are too lazy, here they are
+- [Headers' zeros] <details><summary></summary>
+    ```
+	00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    ```
+
+## Text (code) section
+
+This part of our program is the sequance of actions that OS will execute. For example, let's write the following assembly program:
+
+```asm
+mov ebx, 5
+push ebx
+call 004060A0       ; call ds:PrintNumber
+call 00406090       ; call ds:ExitProgram
+```
+
+Here we have some magic numbers, specifically `004060A0` and `00406090`. These numbers are addresses of functions `PrintNumber` and `ExitProgram` respectively. These functions we will describe in `import data section`, using `.dll` file with these functions. 
+
+Already here we can see that `00400000` is `ImageBase`, then `00401000` is the address of our current `text section` and `00406000` is the address of `import data section`.
+
+For now we will are not going to write anything else in this section and move to the next section.
+
+- [Text section byte-code] <details><summary></summary>
+    ```
+   BB 05 00 00 00 53 FF 15 A0 60 40 00 FF 15 90 60
+   40 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   ...
+   ...
+   <Here is a lot of zeros, the total amount of bytes is SizeOfRawData = 0x1000 = 4096>
+   <If you use HxD, fill file with zeros to 0x1400 address>
+   ...
+   ...
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    ```
+
+## Import data section
+
+### Concise description
+
+In this section we should create so-called import-table, which describes all external functions, that we want to use in our program. It is the last step to create final working program!
+
+The first important thing we should consider is `IMAGE_IMPORT_DESCRIPTOR` (remember about `DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = IMPORT_START` in `NT Optional Header` — it is the address of array of `IMAGE_IMPORT_DESCRIPTOR` structures):
+
+```C++
+struct IMAGE_IMPORT_DESCRIPTOR {
+    union {
+        DWORD   Characteristics;            // 0 for terminating null import descriptor
+        DWORD   OriginalFirstThunk;         // RVA to original unbound IAT (PIMAGE_THUNK_DATA)
+    } DUMMYUNIONNAME;
+    DWORD   TimeDateStamp;                  // 0 if not bound,
+                                            // -1 if bound, and real date\time stamp
+                                            //     in IMAGE_DIRECTORY_ENTRY_BOUND_IMPORT (new BIND)
+                                            // O.W. date/time stamp of DLL bound to (Old BIND)
+
+    DWORD   ForwarderChain;                 // -1 if no forwarders
+    DWORD   Name;
+    DWORD   FirstThunk;                     // RVA to IAT (if bound this IAT has actual addresses)
+};
+```
+
+For example we would like to describe 3 functions. So we are to create 4 such structures, because the 4th is a null structure — a feature of the end of descriptors' array. The aim of such array is to store the addresses of function's name and address in other tables of names and addresses, which are right after the descriptors' array.
+
+So the first such table after `IMAGE_IMPORT_DESCRIPTOR`'s array is an array of structures `IMAGE_THUNK_DATA`:
+
+```C++
+IMAGE_THUNK_DATA32 {
+    union {
+        DWORD ForwarderString;
+        DWORD Function;
+        DWORD Ordinal;
+        DWORD AddressOfData;
+    } u1;
+};
+```
+
+This structure (`IMAGE_THUNK_DATA32`) stores the info about import-function (its name address). This array is used for `OriginalFirstThunk` in `IMAGE_IMPORT_DESCRIPTOR`.
+
+After considered array we should write all the names of imported functions in the following format: 
+* Hint (function serial number)
+* "function_name"
+* "/0"
+
+And at the end we should write the same array, as we have already written: `IMAGE_THUNK_DATA32`. But now it is necessary for `FirstThunk`, this time such thunk-table will be filled while loading the program into memory, so it can be empty, but it is better to duplicate before written array. 
+
+And the last part is writing `.dll` name: `"dllname.dll\0"`.
+
+In short, the structure of `import table` hash the structure:
+* Array from `IMAGE_IMPORT_DESCRIPTOR`, elements of which contain the addresses for information about functions in below arrays:
+* Array from `IMAGE_THUNK_DATA32` structures, where addresses of functions' names are situated (for OriginalFirstThunk).
+* Functions names.
+* The same array from `IMAGE_THUNK_DATA32` (for FirstThunk).
+* Dll name `"dllname.dll\0"`
+
+Now let's consider everything in more details.
+
+### Detailed description
+
+Let's consider `IMAGE_IMPORT_DESCRIPTOR` in more detail. Imagine that we are to describe `N` functions in import table and now we consider function with number `i, (0 <= i < N)`. So there are `N + 1` structures (`N` + a null structure).
+
+```C++
+// ================================================================================================================= 
+OriginalFirstThunk = IMPORT_START + (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) + i * sizeof(IMAGE_THUNK_DATA32)
+                                        // 1) (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) is the size of considered 
+                                        // array of IMAGE_IMPORT_DESCRIPTOR structures.
+                                        // 2) i * sizeof(IMAGE_THUNK_DATA32) is the address of function's structure IMAGE_THUNK_DATA32
+                                        // relative to the beginning of the array of thunks' array.
+                                        // in array of structures.
+
+// ================================================================================================================= 
+FirstThunk = IMPORT_START + (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) + N * sizeof(IMAGE_THUNK_DATA32) + NAMES_SIZE + i * sizeof(IMAGE_THUNK_DATA32)
+                                        // Logic is the same as in OriginalFirstThunk, but now we write addresses of 
+                                        // thunk's array not before functions' names, but after.
+// =================================================================================================================
+Name = FirstThunkS_ADDR + N * sizeof(IMAGE_THUNK_DATA32)
+                                        // Here FirstThunkS_ADDR = FirstThunk(N), where FirstThunk(i) is a function.
+                                        // In short it is the address of .dll name, to which this function belongs.
+                                        // In our case this dll name is in the end of import table.
+// =================================================================================================================
+```
+
+Other fields can be filled with zeros. Don't remember about null structure! 
+
+After we have thunks' array:
+
+```C++
+// =================================================================================================================
+u1.AddressOfData = IMPORT_START + (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) + N * sizeof(IMAGE_THUNK_DATA32) + NAME_ADDR
+                                        // How to count NAME_ADDR see below.
+// =================================================================================================================
+```
+
+Okey, now we should write the names of all imported functions in the following way:
+* 0, "function0\0"
+* 1, "function1\0"
+* ...
+* N, "functionN\0"
+
+All numbers (Hints), such as `0`, `1` or `N` are of `WORD` type. These numbers are the address of function's name! So it is a `NAME_ADDR`! (See above).
+
+As was already told, now we duplicate thunks' array (See above).
+
+After that we write: "dllname.dll\0".
+
+And in the end we fill all bytes with zeros to total numbers of bytes in this section of `SizeOfRawData = 0x1000 = 4096`.
+
+- [Import table byte-code example] <details><summary></summary>
+    ```
+    Descriptors' array:
+   ---------------------------------------------------
+   50 60 00 00 00 00 00 00 00 00 00 00 A8 60 00 00
+   90 60 00 00 58 60 00 00 00 00 00 00 00 00 00 00
+   A8 60 00 00 98 60 00 00 60 60 00 00 00 00 00 00
+   00 00 00 00 A8 60 00 00 A0 60 00 00 00 00 00 00
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   
+   Thunks' array:
+   ---------------------------------------------------
+   68 60 00 00 00 00 00 00 76 60 00 00 00 00 00 00
+   82 60 00 00 00 00 00 00
+   
+   Array from hints (function numbers)  and names:
+   ---------------------------------------------------
+                            00 00 45 78 69 74 50 72
+   6F 67 72 61 6D 00 00 00 47 65 74 4E 75 6D 62 65
+   72 00 00 00 50 72 69 6E 74 4E 75 6D 62 65 72 00
+   
+   Thunks' array again:
+   ---------------------------------------------------
+   68 60 00 00 00 00 00 00 76 60 00 00 00 00 00 00
+   82 60 00 00 00 00 00 00
+   
+   Dll name:
+   ---------------------------------------------------
+                            73 66 61 73 6D 6C 69 62
+   2E 64 6C 6C 00 00 00 00 00 00 00 00 00 00 00 00
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+   ...
+   <If you use HxD, fill file with zeros to 0x2400 address>
+   ...
+   00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+    ```
+    
+## Data section
+
+If you have some initialized data, you should write all this info to this section. In our example we leave this section empty (only 0x1000 zeros!).
+
+## Results
+
+After that download `sfasmlib.dll` to use all functions from example, change its extension to `.exe` and try to execute the program!
+
+If you have some troubles, try working file `example.txt` (change extension).
