@@ -494,7 +494,7 @@ For now we will are not going to write anything else in this section and move to
 
 In this section we should create so-called import-table, which describes all external functions, that we want to use in our program. It is the last step to create final working program!
 
-The first important thing we should consider is `IMAGE_IMPORT_DESCRIPTOR` (remember about `DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = IMPORT_START` in `NT Optional Header` — it is the address of array of `IMAGE_IMPORT_DESCRIPTOR` structures):
+The first important thing we should consider is `IMAGE_IMPORT_DESCRIPTOR` (remember about `DataDirectory[IMAGE_DIRECTORY_ENTRY_IMPORT].VirtualAddress = IMPORT_START` in `NT Optional Header` — it is the address of array from `IMAGE_IMPORT_DESCRIPTOR` structures):
 
 ```C++
 struct IMAGE_IMPORT_DESCRIPTOR {
@@ -528,14 +528,14 @@ IMAGE_THUNK_DATA32 {
 };
 ```
 
-This structure (`IMAGE_THUNK_DATA32`) stores the info about import-function (its name address). This array is used for `OriginalFirstThunk` in `IMAGE_IMPORT_DESCRIPTOR`.
+This structure (`IMAGE_THUNK_DATA32`) stores the info about import-function (its name addresses or simply addresses). This array (its elemeents) is used for `OriginalFirstThunk` in `IMAGE_IMPORT_DESCRIPTOR` array.
 
 After considered array we should write all the names of imported functions in the following format: 
 * Hint (function serial number)
 * "function_name"
 * "/0"
 
-And at the end we should write the same array, as we have already written: `IMAGE_THUNK_DATA32`. But now it is necessary for `FirstThunk`, this time such thunk-table will be filled while loading the program into memory, so it can be empty, but it is better to duplicate before written array. 
+And at the end we should write the same array, as we have already written: `IMAGE_THUNK_DATA32`. But now it is necessary for `FirstThunk`, this time such thunk-table will be filled while loading the program into memory (so all the addresses that we fill here can be changed while using the program). And the elements of this array are the addresses, which we have already used to call functions from dll! So it is the array of addresses, which are addresses of all functions from dll file we want to use.
 
 And the last part is writing `.dll` name: `"dllname.dll\0"`.
 
@@ -565,6 +565,9 @@ OriginalFirstThunk = IMPORT_START + (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) + 
 FirstThunk = IMPORT_START + (N + 1) * sizeof(IMAGE_IMPORT_DESCRIPTOR) + N * sizeof(IMAGE_THUNK_DATA32) + NAMES_SIZE + i * sizeof(IMAGE_THUNK_DATA32)
                                         // Logic is the same as in OriginalFirstThunk, but now we write addresses of 
                                         // thunk's array not before functions' names, but after.
+                                        // As was already mentioned, this element of array is the address, which 
+                                        // is used to call considered function from dll.
+
 // =================================================================================================================
 Name = FirstThunkS_ADDR + N * sizeof(IMAGE_THUNK_DATA32)
                                         // Here FirstThunkS_ADDR = FirstThunk(N), where FirstThunk(i) is a function.
