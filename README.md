@@ -1,11 +1,13 @@
 # How to create EXE file
+
 This repository is a guide how to create an executable file in Windows OS. It helps not only to create, but also to understand in more detail how .exe files are arranged. For each step in the guide, a corresponding byte-code is attached for convenience.
 
-For every moment in guide byte code is attached, so I recommend you to download HxD to copy all byres conveniently.
+For every moment in guide byte code is attached, so I recommend you to download HxD to copy all bytes conveniently.
 
 I recommend you to get acquainted with the following russian-language articles: [Создаём EXE](https://m.habr.com/ru/post/515058/), [PE (Portable Executable): На странных берегах](https://habr.com/ru/post/266831/).
 
 ## Introduction
+
 The structure of .exe file can be considered as follows:
 1. [DOS Header](#dos-header)
 2. [DOS Stub](#dos-stub)
@@ -20,6 +22,7 @@ The structure of .exe file can be considered as follows:
 So let's figure out what are all these contraptions. Of course, let's deal with DOS things first.
 
 ## DOS Header
+
 DOS Header is first bytes in our .exe program. Its aim is to describe how the program should act if it is launched on DOS OS. According to MS source codes, it consists of the following stuff:
 
 ```C++
@@ -84,6 +87,7 @@ e_lfarlc   = 0x0040     // Specifies the file address of the relocation table, o
 // ================================================================================================================= 
 e_lfanew   = 0x00B0     // This field is the address of the beginning of NT Header. So it is the size 
                         // of DOS Header and DOS Stub in bytes (64 + 112 = 176 = 0x00B0).
+// ================================================================================================================= 
 ```
 There are two important aims of this header. First of all it is `e_lfanew` — the address of header that is directly related to the work of the program in Windows OS (NT Header — see further), and the second is the description how the program will behave, if is is launched on DOS OS, using the code from DOS Stub.
 
@@ -97,6 +101,7 @@ There are two important aims of this header. First of all it is `e_lfanew` — t
 
 
 ## DOS Stub
+
 If you are attentive you already know, that this part is to take 112 bytes. This part of .exe file is to describe the program behaviour on DOS OS. In short, it prints the message "This program cannot be run in DOS mode." and exits from the program. So the assembler code is as follows:
 
 ```asm
@@ -140,6 +145,7 @@ struct IMAGE_NT_HEADERS {
 Here we can see `Signature`, which role is the same as `e_magic` in DOS Header. It should be "PE" (program executable) or 'EP'. `FileHeader` is common for both x64 and x86. But x64 architecture has `IMAGE_OPTIONAL_HEADER64 OptionalHeader`. Let's look what these headers are.
 
 ### NT File Header
+
 This file has the following structure:
 ```C++
 struct IMAGE_FILE_HEADER {
